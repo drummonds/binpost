@@ -5,25 +5,13 @@ import (
 	"testing"
 )
 
-func TestWriteAndReadRecords(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "binpost_test_*.bin")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpfile.Name())
-	tmpfile.Close()
-
-	records := []DataRecord{
-		{ID: 1, Date: 20240101, Amt: 100.0},
-		{ID: 2, Date: 20240102, Amt: 200.0},
-	}
-
-	err = WriteRecords(tmpfile.Name(), records)
+func testWriteAndReadRecords(t testing.TB, records []DataRecord, filename string) {
+	err := WriteRecords(filename, records)
 	if err != nil {
 		t.Fatalf("WriteRecords failed: %v", err)
 	}
 
-	readRecords, err := ReadRecords[DataRecord](tmpfile.Name())
+	readRecords, err := ReadRecords[DataRecord](filename)
 	if err != nil {
 		t.Fatalf("ReadRecords failed: %v", err)
 	}
@@ -37,6 +25,22 @@ func TestWriteAndReadRecords(t *testing.T) {
 			t.Errorf("Record %d mismatch: wrote %+v, read %+v", i, rec, readRecords[i])
 		}
 	}
+}
+
+func TestWriteAndReadRecords(t *testing.T) {
+	tmpfile, err := os.CreateTemp("", "binpost_test_*.bin")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpfile.Name())
+	tmpfile.Close()
+
+	records := []DataRecord{
+		{ID: 1, Date: 20240101, Amt: 100.0},
+		{ID: 2, Date: 20240102, Amt: 200.0},
+	}
+
+	testWriteAndReadRecords(t, records, tmpfile.Name())
 }
 
 func BenchmarkWriteRecords100k(b *testing.B) {
