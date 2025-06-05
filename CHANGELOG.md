@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.0 2025-06-05
+## v0.3.1 2025-06-05
 
 - Reorganise files locations so can import
 

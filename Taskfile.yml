@@ -6,5 +6,4 @@ version: '3'
 tasks:
   bench:
     cmds:
-      - go test -bench=. ./binpost
-    silent: true
+      - go test -bench=. .
