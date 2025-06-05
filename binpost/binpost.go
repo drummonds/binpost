@@ -19,7 +19,7 @@ type DataRecord struct {
 	// Example fields
 	ID   int64
 	Date int64
-	Amt  float64
+	Amt  int64
 }
 
 // WriteRecords writes a slice of fixed-size structs to a binary file.
@@ -71,4 +71,19 @@ func ReadRecords[T any](filename string) ([]T, error) {
 		records = append(records, rec)
 	}
 	return records, nil
+}
+
+// OpenAppendFile opens a file for appending (creates if not exists) and returns the file, a closer function, and an error.
+func OpenAppendFile[T any](filename string) (*os.File, func() error, error) {
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+	closer := func() error { return f.Close() }
+	return f, closer, nil
+}
+
+// WriteOneRecord writes a single record to the end of the given file.
+func WriteOneRecord[T any](f *os.File, rec T) error {
+	return binary.Write(f, binary.LittleEndian, rec)
 }

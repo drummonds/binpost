@@ -36,8 +36,8 @@ func TestWriteAndReadRecords(t *testing.T) {
 	tmpfile.Close()
 
 	records := []DataRecord{
-		{ID: 1, Date: 20240101, Amt: 100.0},
-		{ID: 2, Date: 20240102, Amt: 200.0},
+		{ID: 1, Date: 20240101, Amt: 100},
+		{ID: 2, Date: 20240102, Amt: 200},
 	}
 
 	testWriteAndReadRecords(t, records, tmpfile.Name())
@@ -46,7 +46,7 @@ func TestWriteAndReadRecords(t *testing.T) {
 func BenchmarkWriteRecords100k(b *testing.B) {
 	records := make([]DataRecord, 100_000)
 	for i := range records {
-		records[i] = DataRecord{ID: int64(i), Date: 20240101 + int64(i%365), Amt: float64(i) * 1.23}
+		records[i] = DataRecord{ID: int64(i), Date: 20240101 + int64(i%365), Amt: int64(i) * 123}
 	}
 
 	for n := 0; n < b.N; n++ {
@@ -67,7 +67,7 @@ func BenchmarkWriteRecords100k(b *testing.B) {
 func BenchmarkReadRecords100k(b *testing.B) {
 	records := make([]DataRecord, 100_000)
 	for i := range records {
-		records[i] = DataRecord{ID: int64(i), Date: 20240101 + int64(i%365), Amt: float64(i) * 1.23}
+		records[i] = DataRecord{ID: int64(i), Date: 20240101 + int64(i%365), Amt: int64(i) * 123}
 	}
 
 	tmpfile, err := os.CreateTemp("", "binpost_bench_read_*.bin")
@@ -97,7 +97,7 @@ func BenchmarkReadRecords100k(b *testing.B) {
 func BenchmarkWriteRecords1M(b *testing.B) {
 	records := make([]DataRecord, 1_000_000)
 	for i := range records {
-		records[i] = DataRecord{ID: int64(i), Date: 20240101 + int64(i%365), Amt: float64(i) * 1.23}
+		records[i] = DataRecord{ID: int64(i), Date: 20240101 + int64(i%365), Amt: int64(i) * 123}
 	}
 
 	for n := 0; n < b.N; n++ {
@@ -118,7 +118,7 @@ func BenchmarkWriteRecords1M(b *testing.B) {
 func BenchmarkReadRecords1M(b *testing.B) {
 	records := make([]DataRecord, 1_000_000)
 	for i := range records {
-		records[i] = DataRecord{ID: int64(i), Date: 20240101 + int64(i%365), Amt: float64(i) * 1.23}
+		records[i] = DataRecord{ID: int64(i), Date: 20240101 + int64(i%365), Amt: int64(i) * 123}
 	}
 
 	tmpfile, err := os.CreateTemp("", "binpost_bench_read_1m_*.bin")
@@ -141,6 +141,50 @@ func BenchmarkReadRecords1M(b *testing.B) {
 		}
 		if len(readRecords) != len(records) {
 			b.Fatalf("Expected %d records, got %d", len(records), len(readRecords))
+		}
+	}
+}
+
+func BenchmarkWriteRecords1M_Append(b *testing.B) {
+	records := make([]DataRecord, 1_000_000)
+	var expectedSum int64
+	for i := range records {
+		amt := int64(i) * 123
+		records[i] = DataRecord{ID: int64(i), Date: 20240101 + int64(i%365), Amt: amt}
+		expectedSum += amt
+	}
+
+	for n := 0; n < b.N; n++ {
+		tmpfile, closer, err := OpenAppendFile[DataRecord]("binpost_bench_1m_append.bin")
+		if err != nil {
+			b.Fatalf("Failed to open append file: %v", err)
+		}
+		defer os.Remove(tmpfile.Name())
+
+		for _, rec := range records {
+			err := WriteOneRecord(tmpfile, rec)
+			if err != nil {
+				b.Fatalf("WriteOneRecord failed: %v", err)
+			}
+		}
+		if err := closer(); err != nil {
+			b.Fatalf("Failed to close file: %v", err)
+		}
+
+		readRecords, err := ReadRecords[DataRecord](tmpfile.Name())
+		if err != nil {
+			b.Fatalf("ReadRecords failed: %v", err)
+		}
+		if len(readRecords) != len(records) {
+			b.Fatalf("Expected %d records, got %d", len(records), len(readRecords))
+		}
+
+		var sum int64
+		for _, rec := range readRecords {
+			sum += rec.Amt
+		}
+		if sum != expectedSum {
+			b.Fatalf("Sum mismatch: expected %d, got %d", expectedSum, sum)
 		}
 	}
 }
